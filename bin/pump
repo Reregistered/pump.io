@@ -55,7 +55,7 @@ var getConfig = function(filename) {
     } else {
         files = ['/etc/pump.io.json',
                  path.join(process.env.HOME, ".pump.io.json")];
-    }   
+    }
 
     // This is all sync
     for (i = 0; i < files.length; i++) {
@@ -72,6 +72,29 @@ var getConfig = function(filename) {
     }
 
     return config;
+};
+
+/**
+ * check if we're in debug, if yes, change the debug port
+ * this avoids the node bug of starting children on the same
+ * debug port as their parent
+ *
+ * @param childIdx
+ */
+var debugPatch = function(childIdx){
+
+  for (var itr = 0 ; itr < process.execArgv.length ; ++itr){
+    if (process.execArgv[itr].indexOf('--debug') === 0){
+
+      // we have a debug flag - overwrite it with a new base
+      // port -  arg is of the form
+      // --debug(-brk)=<port>
+      var debugCmd = process.execArgv[itr];
+      process.execArgv[itr] = debugCmd.substring(0, debugCmd.indexOf('=')+1) +
+        (5859 + childIdx).toString();
+      break;
+    }
+  }
 };
 
 // Launch apps
@@ -98,6 +121,9 @@ var launchApps = function(config) {
         Dispatch.start(log);
 
         for (i = 0; i < cnt; i++) {
+
+            debugPatch(i);
+
             cluster.fork();
         }
     } else {
